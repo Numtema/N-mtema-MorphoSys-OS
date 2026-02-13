@@ -1,11 +1,36 @@
-<div align="center">
+# Nümtema MorphoSys OS
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+A Unified Cognitive OS merging MorphoSys Engine, Vortex, and Universal Framework powered by Gemini.
 
-  <h1>Built with AI Studio</h2>
+## Features
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+- **Cognitive Visualizer**: Real-time D3.js force-directed graph of cognitive objects.
+- **Morphic Flux Log**: Traceable logs of the AI's reasoning steps and morphisms.
+- **Metrics Dashboard**: Monitoring of virtual entropy, potential, and prediction error.
+- **Gemini 3 Flash Integration**: Powered by Google's latest high-performance model.
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+## Setup
 
-</div>
+1. **Install Dependencies**
+   ```bash
+   npm install
+   ```
+
+2. **Configure API Key**
+   Create a `.env` file in the root directory:
+   ```env
+   GEMINI_API_KEY=your_gemini_api_key_here
+   ```
+
+3. **Run Development Server**
+   ```bash
+   npm run dev
+   ```
+
+## Architecture
+
+- **React 19**: Frontend framework.
+- **Vite**: Build tool.
+- **@google/genai**: AI interaction.
+- **D3.js**: Data visualization.
+- **Tailwind CSS**: Styling.
