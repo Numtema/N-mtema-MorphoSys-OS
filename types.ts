@@ -9,7 +9,12 @@ export enum CognitiveType {
   TRACE = "trace",
   MODELE = "modèle",
   DECISION = "décision",
-  DIAGNOSTIC = "diagnostic"
+  DIAGNOSTIC = "diagnostic",
+  // New Types for Task Decomposition
+  DAG_ROOT = "dag_root",
+  TASK = "task",
+  MORSEL = "morsel", // Atomic unit of work
+  DEPENDENCY = "dependency"
 }
 
 export enum ValidationState {

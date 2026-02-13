@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { CognitiveState, INITIAL_STATE } from './types';
+import { CognitiveState, INITIAL_STATE, CognitiveObject } from './types';
 import { processCognitiveInput } from './services/gemini';
 import CognitiveVisualizer from './components/CognitiveVisualizer';
 import MetricsPanel from './components/MetricsPanel';
@@ -29,13 +29,11 @@ const App: React.FC = () => {
     setInput(""); // Clear input early for better UX
     setIsProcessing(true);
 
-    // Update history locally first
     const newHistory = [...history, `USER: ${currentInput}`];
-    // Optimistically update the log part of the state if we wanted, 
-    // but here we just wait for the full state update.
-
+    
     try {
-      const newState = await processCognitiveInput(currentInput, newHistory);
+      // Pass existing objects to enable iterative graph expansion
+      const newState = await processCognitiveInput(currentInput, newHistory, cognitiveState.objects);
       setCognitiveState(newState);
       setHistory([...newHistory, `SYSTEM: ${newState.final_output}`]);
     } catch (err) {
@@ -48,7 +46,6 @@ const App: React.FC = () => {
       }));
     } finally {
       setIsProcessing(false);
-      // Re-focus after processing
       setTimeout(() => textareaRef.current?.focus(), 100);
     }
   };
@@ -58,6 +55,52 @@ const App: React.FC = () => {
       e.preventDefault();
       handleSubmit();
     }
+  };
+
+  const handleNodeClick = (node: CognitiveObject) => {
+    if (isProcessing) return;
+    setInput(`DRILL_DOWN: ${node.nom}`);
+    textareaRef.current?.focus();
+  };
+
+  const handleExport = () => {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `morphosys-artifact-${timestamp}.md`;
+    
+    // Safe checks for metrics
+    const entropy = cognitiveState.metrics?.entropy ?? 0;
+    const potential = cognitiveState.metrics?.potential ?? 0;
+    const error = cognitiveState.metrics?.prediction_error ?? 0;
+
+    const content = `
+# Nümtema MorphoSys Artifact
+**Generated:** ${new Date().toLocaleString()}
+**Mode:** ${cognitiveState.mode}
+
+## Metrics
+- Entropy: ${entropy.toFixed(4)}
+- Potential: ${potential.toFixed(4)}
+- Prediction Error: ${error.toFixed(4)}
+
+## Final Output
+${cognitiveState.final_output}
+
+## Graph Structure (DAG)
+${(cognitiveState.objects || []).map(o => `- [${o.type.toUpperCase()}] **${o.nom}** (Relations: ${o.relations.join(', ') || 'None'})`).join('\n')}
+
+## Morphic Flux Log
+${(cognitiveState.flux || []).map(f => `${f.step}. [${f.morphism}] ${f.description} (eps: ${(f.epsilon ?? 0).toFixed(2)})`).join('\n')}
+    `.trim();
+
+    const blob = new Blob([content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -86,9 +129,18 @@ const App: React.FC = () => {
              <span className="text-numtema-muted mx-2">/</span>
              <span className="text-white">MorphoSys OS</span>
            </h1>
-           <div className="flex items-center gap-4 text-xs font-mono text-numtema-muted">
+           <div className="flex items-center gap-6 text-xs font-mono text-numtema-muted">
               <span className={isProcessing ? "text-numtema-accent animate-pulse" : ""}>CPU_COGNITIVE: {isProcessing ? 'BUSY' : 'IDLE'}</span>
-              <span>API: GEMINI-3-FLASH</span>
+              <button 
+                  onClick={handleExport}
+                  disabled={isProcessing || cognitiveState.objects.length === 0}
+                  className="hover:text-white transition-colors border border-numtema-border px-3 py-1.5 rounded hover:border-numtema-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                EXPORT MD
+              </button>
            </div>
         </header>
 
@@ -105,7 +157,7 @@ const App: React.FC = () => {
                     <span className="text-[10px] font-mono text-numtema-muted">{cognitiveState.objects.length} OBJECTS</span>
                  </div>
                  <div className="flex-1 relative w-full h-full min-h-0">
-                    <CognitiveVisualizer objects={cognitiveState.objects} />
+                    <CognitiveVisualizer objects={cognitiveState.objects} onNodeClick={handleNodeClick} />
                     {isProcessing && (
                         <div className="absolute inset-0 bg-numtema-bg/20 backdrop-blur-[1px] flex items-center justify-center z-10 pointer-events-none">
                             <div className="text-numtema-primary font-mono animate-pulse bg-numtema-bg/80 px-4 py-2 rounded border border-numtema-primary/30">
@@ -151,7 +203,7 @@ const App: React.FC = () => {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Enter command, objective, or complex query..."
+                    placeholder="Enter command, objective, or click a node to drill down..."
                     className="w-full bg-numtema-panel border border-numtema-border rounded-md px-4 py-3 text-sm font-mono focus:outline-none focus:border-numtema-primary focus:ring-1 focus:ring-numtema-primary resize-none h-14 transition-all placeholder:text-numtema-muted/50"
                     disabled={isProcessing}
                 />
